@@ -82,7 +82,7 @@ pub fn get_tys(ty: &Type, tys: &mut Vec<String>) {
 
 fn match_ty(ty: &str) -> bool {
     match ty {
-        "Option" | "Vec" => false,
+        "Option" | "Vec" | "Arc" => false,
         _ => true
     }
 }

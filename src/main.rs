@@ -1,7 +1,10 @@
 use anyhow::{anyhow, bail, Result};
 use async_recursion::async_recursion;
 use log::{debug, error, warn};
-use rust_lib::{fields::ParseField, regexs::Regexs, serdes::Rename};
+use rust_lib::{
+    fields::ParseField, regexs::Regexs, serdes::Rename,
+    variants::ParseVariant
+};
 use std::{ops::Add, path::PathBuf, sync::Arc};
 use syn::{
     spanned::Spanned,
@@ -21,18 +24,34 @@ async fn main() -> Result<()> {
         get_item(ModPath::Lib { path: path.into() }, &rx).await?;
     for item in items {
         match item {
-            ItemData::Enum { .. } => {},
+            ItemData::Enum {
+                item,
+                local,
+                rename_all,
+                tag,
+                content,
+                name,
+                variants
+            } => {
+                if name.as_str() == "DevProtocolType"
+                    || name.as_str() == "BatchAcquisition"
+                {
+                    for var in variants {
+                        debug!("{:?}", var);
+                    }
+                }
+            },
             ItemData::Struct {
                 rename_all,
                 local,
                 fields,
                 name
             } => {
-                if name.as_str() == "UploadDataBuilder" {
-                    debug!("{} {:?} ", local.mod_path(), rename_all);
-                    debug!("{:?} ", fields);
-                }
-            },
+                // if name.as_str() == "UploadDataBuilder" {
+                //     debug!("{} {:?} ", local.mod_path(),
+                // rename_all);     debug!("{:?} ",
+                // fields); }
+            }
         }
     }
     Ok(())
@@ -116,12 +135,20 @@ async fn get_item(
                         continue;
                     }
                 }
+                let variants = enum_item
+                    .variants
+                    .iter()
+                    .map(|x| ParseVariant::from(x))
+                    .collect();
+                let name = enum_item.ident.to_string();
                 let data = ItemData::Enum {
                     item: enum_item,
                     local: arc_path.clone(),
                     rename_all,
                     tag,
-                    content
+                    content,
+                    name,
+                    variants
                 };
                 datas.push(data);
             },
@@ -229,7 +256,9 @@ enum ItemData {
         local:      Arc<ModPath>,
         rename_all: Option<Rename>,
         tag:        Option<String>,
-        content:    Option<String>
+        content:    Option<String>,
+        name:       String,
+        variants:   Vec<ParseVariant>
     },
     Struct {
         name:       String,
